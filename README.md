@@ -1,3 +1,10 @@
-# Blogpost Release
+# Blog Factory Release
 
-이 저장소는 Blog Factory 앱의 배포 파일을 보관하는 저장소입니다.
+This private repository only hosts release downloads for Blog Factory.
+
+Download the latest release from the **Releases** page:
+
+- Windows: `BlogFactory-Windows.zip`
+- Mac: `BlogFactory-Mac.zip`
+
+API keys and writing data are stored only on each user's local computer.
