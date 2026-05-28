@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Build output
+client/dist/
+dist/
+
+# Runtime data (created automatically on first run)
+data/
+server/data/
+
+# Build artifacts
+BlogFactory.exe
+BlogFactory-mac
+
+# Environment
+.env
+!.env.example
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Logs
+npm-debug.log*
+*.log
+
+# Temporary
+*.tmp
+*.temp
+server/database/

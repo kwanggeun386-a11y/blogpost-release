@@ -1,0 +1,44 @@
+name: Security Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  audit-and-test:
+    name: npm audit and local security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      - name: Install packages
+        run: |
+          npm ci
+          npm ci --prefix client
+
+      - name: Audit root dependencies
+        run: npm audit --audit-level=moderate
+
+      - name: Audit client dependencies
+        run: npm audit --prefix client --audit-level=moderate
+
+      - name: Run security tests
+        run: node --test tests/security.test.js
+
+      - name: Build client
+        run: npm run build --prefix client

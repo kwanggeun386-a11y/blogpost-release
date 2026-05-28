@@ -1,0 +1,176 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag, example: v1.0.0'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Windows EXE
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      - name: Install packages
+        run: |
+          npm ci
+          npm ci --prefix client
+
+      - name: Build React client
+        run: npm run build --prefix client
+
+      - name: Build EXE
+        run: npx pkg . --targets node22-win-x64 --output BlogFactory.exe
+
+      - name: Assemble dist
+        shell: cmd
+        run: |
+          mkdir dist\client\dist
+          mkdir dist\data
+          copy BlogFactory.exe   dist\BlogFactory.exe
+          xcopy /e /i /q client\dist dist\client\dist
+          copy Deploy_Start.bat  dist\Start.bat
+          copy Stop.bat          dist\Stop.bat
+
+      - name: Zip
+        run: Compress-Archive -Path dist\* -DestinationPath BlogFactory-Windows.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: BlogFactory-Windows
+          path: BlogFactory-Windows.zip
+
+  build-mac:
+    name: Mac Binary
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      - name: Install packages
+        run: |
+          npm ci
+          npm ci --prefix client
+
+      - name: Build React client
+        run: npm run build --prefix client
+
+      - name: Build Mac binary
+        run: |
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ]; then
+            MAC_TARGET="node22-macos-arm64"
+          else
+            MAC_TARGET="node22-macos-x64"
+          fi
+          echo "Building for $ARCH -> $MAC_TARGET"
+          test -f node_modules/sqlite3/build/Release/node_sqlite3.node
+          npx pkg . --targets $MAC_TARGET --output BlogFactory-mac
+
+      - name: Assemble dist
+        run: |
+          mkdir -p dist/client/dist dist/data
+          cp BlogFactory-mac      dist/BlogFactory-mac
+          cp -r client/dist       dist/client/dist
+          cp Start.command        dist/Start.command
+          chmod +x dist/BlogFactory-mac dist/Start.command
+
+      - name: Zip
+        run: cd dist && zip -r ../BlogFactory-Mac.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: BlogFactory-Mac
+          path: BlogFactory-Mac.zip
+
+  release:
+    name: Create Release
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Set release version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: BlogFactory-Windows
+
+      - name: Download Mac artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: BlogFactory-Mac
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: "Blog Factory ${{ env.VERSION }}"
+          body: |
+            ## 다운로드
+
+            | 운영체제 | 파일 | 설명 |
+            |---|---|---|
+            | Windows 10/11 | `BlogFactory-Windows.zip` | 압축 해제 후 `Start.bat` 실행 |
+            | Mac | `BlogFactory-Mac.zip` | 압축 해제 후 `Start.command` 실행 |
+
+            ## 설치 방법
+
+            **Windows**
+            1. `BlogFactory-Windows.zip` 다운로드
+            2. 원하는 폴더에 압축 해제
+            3. `Start.bat` 더블클릭
+            4. 브라우저에서 자동으로 열립니다
+
+            **Mac**
+            1. `BlogFactory-Mac.zip` 다운로드
+            2. 원하는 폴더에 압축 해제
+            3. `Start.command` 더블클릭
+            4. 최초 실행 시 보안 경고가 나오면 시스템 설정에서 실행 허용
+            5. 브라우저에서 자동으로 열립니다
+
+            ## 첫 실행 후
+            - 우측 상단 설정에서 AI 제공자와 API 키를 입력하세요
+            - 데이터는 각자 컴퓨터에만 저장됩니다
+          files: |
+            BlogFactory-Windows.zip
+            BlogFactory-Mac.zip
+          generate_release_notes: false
