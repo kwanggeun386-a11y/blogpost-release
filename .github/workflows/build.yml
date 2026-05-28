@@ -170,6 +170,13 @@ jobs:
             ## 첫 실행 후
             - 우측 상단 설정에서 AI 제공자와 API 키를 입력하세요
             - 데이터는 각자 컴퓨터에만 저장됩니다
+
+            ## 다운로드/실행 확인 남기기
+            다운로드 또는 실행 확인 후 아래 링크에서 기록을 남겨 주세요.
+
+            https://github.com/kwanggeun386-a11y/blogpost-release/issues/new?template=download-confirmation.yml
+
+            관리자는 `Actions` → `Release Download Report`에서 릴리즈 파일별 다운로드 횟수를 확인할 수 있습니다.
           files: |
             BlogFactory-Windows.zip
             BlogFactory-Mac.zip

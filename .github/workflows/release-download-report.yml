@@ -1,0 +1,51 @@
+name: Release Download Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Report release asset downloads
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          releases="$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPO}/releases")"
+
+          {
+            echo "## Release Download Report"
+            echo
+            echo "Repository: \`${REPO}\`"
+            echo
+            echo "| Release | Asset | Downloads | Size | Updated |"
+            echo "|---|---|---:|---:|---|"
+            echo "${releases}" | jq -r '
+              if length == 0 then
+                "| - | No releases found | 0 | 0 | - |"
+              else
+                .[] | .tag_name as $tag |
+                if (.assets | length) == 0 then
+                  "| \($tag) | No assets found | 0 | 0 | - |"
+                else
+                  .assets[] |
+                  "| \($tag) | \(.name) | \(.download_count) | \(.size) | \(.updated_at) |"
+                end
+              end
+            '
+            echo
+            echo "> GitHub release assets expose download counts, but not the identity of each downloader."
+            echo "> Use the download confirmation issue form to collect user-provided execution confirmations."
+          } >> "${GITHUB_STEP_SUMMARY}"
