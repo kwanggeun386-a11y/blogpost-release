@@ -14,7 +14,7 @@
     "pkg-build": "npm run build && npx pkg . --targets node22-win-x64 --output BlogFactory.exe"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.30.0",
+    "@anthropic-ai/sdk": "^0.99.0",
     "@google/generative-ai": "^0.21.0",
     "concurrently": "^8.2.2",
     "cors": "^2.8.5",
